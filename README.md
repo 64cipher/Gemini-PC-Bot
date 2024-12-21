@@ -17,6 +17,8 @@ Le code est libre, faites-en ce que vous voulez mais créditez-moi en cas de for
 
 ```python gemini-pc-bot.py```
 
+Obtenez gratuitement votre clé API Gemini sur ![url](https://aistudio.google.com/apikey)
+
 # Réglages
 
 Vous pouvez changer le nombre de tentative dans la ligne 26
