@@ -15,6 +15,13 @@ Gemini peut ouvrir certains programmes mais faut pas trop lui en demander
 
 ```python gemini-pc-bot.py```
 
+# Réglages
+
+Vous pouvez changer le nombre de tentative dans la ligne 26
+
+```MAX_RETRIES = 0```
+
+
 # Donations
 
 BTC: 3HCDc4vyASbZiu3SV5DzrzYvEvfTgSzM3B
