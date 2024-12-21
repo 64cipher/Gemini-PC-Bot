@@ -9,8 +9,8 @@ Gemini peut ouvrir certains programmes mais faut pas trop lui en demander
 
 ```git clone https://github.com/64cipher/Gemini-PC-Bot.git```
 
-```pip install -r requirements. txt```
-
 ```cd Gemini-PC-Bot```
+
+```pip install -r requirements. txt```
 
 ```python gemini-pc-bot.py```
