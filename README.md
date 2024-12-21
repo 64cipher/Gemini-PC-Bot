@@ -1,5 +1,5 @@
-# GemPCBot
-PoC de controle clavier/souris par Gemini (EXPERIMENTAL)
+# GemPCBot (EXPERIMENTAL)
+PoC de controle clavier/souris par Gemini
 
 Gemini peut ouvrir certains programmes mais faut pas trop lui en demander 
 
