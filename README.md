@@ -17,7 +17,7 @@ Le code est libre, faites-en ce que vous voulez mais créditez-moi en cas de for
 
 ```python gemini-pc-bot.py```
 
-Obtenez gratuitement votre clé API Gemini sur ![Google AI Studio](https://aistudio.google.com/apikey)
+Obtenez gratuitement votre clé API Gemini sur https://aistudio.google.com/apikey
 
 # Réglages
 
