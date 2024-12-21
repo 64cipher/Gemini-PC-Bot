@@ -1,0 +1,9 @@
+google-generativeai
+pynput
+mss
+Pillow
+numpy
+torch
+speechrecognition
+ttkthemes
+pyperclip
