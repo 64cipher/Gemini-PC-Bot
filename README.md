@@ -1,7 +1,10 @@
 # GemPCBot (EXPERIMENTAL)
 PoC de controle clavier/souris par Gemini
 
+
 Gemini peut ouvrir et intéragir avec certains programmes mais faut pas trop lui en demander !
+Il peut se trompé dans les actions, procéder avec précaution !
+
 
 Le code est libre, faites-en ce que vous voulez mais créditez-moi en cas de fork
 
