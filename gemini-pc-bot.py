@@ -118,7 +118,7 @@ class TaskAutomator:
 
             Tu dois retourner une liste d'actions textuelles, une action par ligne. 
             Priorise toujours les interactions avec l'interface (clics, mouvements de souris) avant la frappe au clavier.
-            Si tu dois lancer un programme, ouvre le menu Démarrer, utilise type_text pour taper le nom du programme, puis appuie sur la touche enter pour valider.
+            Si tu dois lancer un programme, **ouvre toujours le menu Démarrer en appuyant sur la touche windows, utilise type_text pour taper le nom du programme, puis appuie sur la touche enter pour valider.**
             Après avoir lancé le programme, interagit directement avec son interface pour faire ce que l'on te demande.
             Une fois ta tâche terminée, ne fait rien de plus.
             Rajoute une pause après avoir interagi avec l'interface graphique, surtout si tu viens d'ouvrir une application ou un menu.
@@ -143,7 +143,7 @@ class TaskAutomator:
 
             Par exemple, si tu dois cliquer sur un bouton qui contient le texte "Ouvrir", tu dois retourner l'action 'click_mouse left' et cibler le centre du bouton.
             Si tu dois écrire ton nom dans un champ texte, tu dois utiliser l'action 'type_text <ton nom>'.
-            Si tu dois lancer un programme, ouvre le menu Démarrer en appuyant sur la touche windows, tape le nom du programme avec type_text puis valides avec la touche enter.
+            **Si tu dois lancer un programme, ouvre le menu Démarrer en appuyant sur la touche windows, tape le nom du programme avec type_text puis valides avec la touche enter.**
 
             Explique ton raisonnement avant de prendre une capture d'écran.
         """
