@@ -23,11 +23,9 @@ import pyperclip  # Import de pyperclip
 PAUSE_DURATION = 1
 API_KEY_FILE = "api_key.txt"  # Nom du fichier de sauvegarde de la clé api
 MIN_PAUSE_DURATION = 1
-MAX_RETRIES = 3  # Nombre maximal de tentatives d'execution
-DEFAULT_MODEL = "gemini-2.0-flash-exp"  # modèle par défaut
-AVAILABLE_MODELS = ["gemini-2.0-flash-exp", "gemini-2.0-flash-thinking-exp-1219", "gemini-1.5-pro", "gemini-1.5-flash",
-                   "gemini-1.5-flash-8b", "text-embedding-004"]  # Modèle disponible dans le menu déroulant
-MAX_VISION_REQUESTS = 5  # Nombre max de requêtes vision par instruction
+MAX_RETRIES = 0  # nombre maximal de tentatives d'execution
+DEFAULT_MODEL = "gemini-2.0-flash-exp" # modèle par défaut
+AVAILABLE_MODELS = ["gemini-2.0-flash-exp", "gemini-2.0-flash-thinking-exp-1219", "gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.5-flash-8b", "text-embedding-004"] # Modèle disponible dans le menu déroulant
 
 # Couleurs et polices pour un thème plus doux
 BG_COLOR = "#f0f0f0"  # Gris très clair pour le fond
@@ -39,8 +37,7 @@ FONT_SIZE = 11
 
 
 class TaskAutomator:
-    def __init__(self, api_key, output_text_widget, status_label, send_button, stop_button, model_name=DEFAULT_MODEL,
-                 max_retries=MAX_RETRIES):
+    def __init__(self, api_key, output_text_widget, status_label, send_button, stop_button, model_name=DEFAULT_MODEL, max_retries = MAX_RETRIES):
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel(model_name)
         self.mouse = MouseController()
@@ -51,9 +48,8 @@ class TaskAutomator:
         self.stop_button = stop_button  # Bouton pour arrêter l'exécution
         self._stop_requested = False  # Flag pour interrompre l'exécution
         self._history = []
-        self.current_instruction = None  # Mémorise l'instruction courante
-        self.max_retries = max_retries  # Nombre maximal de tentatives
-        self.vision_request_count = 0
+        self.current_instruction = None # Mémorise l'instruction courante
+        self.max_retries = max_retries # Nombre maximal de tentatives
 
     def _log_message(self, message):
         """Affiche le message dans la zone de texte."""
@@ -74,13 +70,8 @@ class TaskAutomator:
 
     def _analyze_image_with_gemini_vision(self, image_base64):
         """Analyse l'image avec l'API Gemini Vision."""
-        if self.vision_request_count >= MAX_VISION_REQUESTS:
-            self._log_message(
-                "Quota de requêtes Gemini Vision dépassé pour cette instruction. Veuillez réessayer avec une autre instruction.")
-            return {}
 
         try:
-            self.vision_request_count += 1  # On incrémente le compteur à chaque requête vision
             contents = [
                 "Analyse l'image et détecte tous les éléments de l'interface graphique, et leurs textes",
                 {"mime_type": "image/png", "data": image_base64}
@@ -102,70 +93,59 @@ class TaskAutomator:
         except Exception as e:
             self._log_message(f"Erreur lors de l'analyse avec Gemini Vision: {e}")
             return {}
-
     def _calculate_center(self, element):
-        """Calcule le centre d'un élément à partir de ses coordonnées."""
-        if "bounding_box" in element:
-            x1 = element["bounding_box"]["x1"]
-            y1 = element["bounding_box"]["y1"]
-            x2 = element["bounding_box"]["x2"]
-            y2 = element["bounding_box"]["y2"]
-            center_x = (x1 + x2) // 2
-            center_y = (y1 + y2) // 2
-            return center_x, center_y
-        return None, None
+            """Calcule le centre d'un élément à partir de ses coordonnées."""
+            if "bounding_box" in element:
+                x1 = element["bounding_box"]["x1"]
+                y1 = element["bounding_box"]["y1"]
+                x2 = element["bounding_box"]["x2"]
+                y2 = element["bounding_box"]["y2"]
+                center_x = (x1 + x2) // 2
+                center_y = (y1 + y2) // 2
+                return center_x, center_y
+            return None, None
 
     def _parse_instruction(self, instruction, image_base64, retry_message=None):
         """Utilise Gemini pour analyser l'instruction, l'image et les données de vision et retourner des actions sous forme textuelle."""
         vision_data = self._analyze_image_with_gemini_vision(image_base64)  # données de vision
 
         prompt = f"""
-Tu es un assistant expert en automatisation d'interface graphique. Ton but est d'exécuter une instruction en interagissant avec l'interface.
-Voici l'instruction: {instruction}
+            Tu es un assistant expert en automatisation d'interface graphique. Ton but est d'exécuter une instruction en interagissant avec l'interface.
+            Voici l'instruction: {instruction}
 
-Voici les données de vision (format json):
-{vision_data}
+            Voici les données de vision (format json):
+            {vision_data}
 
-Tu dois retourner une liste d'actions textuelles, une action par ligne.
-Priorise toujours les interactions avec l'interface (clics, mouvements de souris) avant la frappe au clavier.
-Si tu dois lancer un programme, ouvre le menu Démarrer, utilise type_text pour taper le nom du programme, puis appuie sur la touche enter pour valider.
-Après avoir lancé le programme, interagit directement avec son interface pour faire ce que l'on te demande.
-Une fois ta tâche terminée, ne fait rien de plus.
-Rajoute une pause après avoir interagi avec l'interface graphique, surtout si tu viens d'ouvrir une application ou un menu.
-Ajoute une pause après une action press_key enter.
-Quand tu dois cliquer sur un élément, utilise les données de vision pour déterminer les coordonnées précises de l'élément et clique au centre de celui-ci.
-Tu peux faire plusieurs actions avant de faire une capture d'écran.
+            Tu dois retourner une liste d'actions textuelles, une action par ligne. 
+            Priorise toujours les interactions avec l'interface (clics, mouvements de souris) avant la frappe au clavier.
+            Si tu dois lancer un programme, ouvre le menu Démarrer, utilise type_text pour taper le nom du programme, puis appuie sur la touche enter pour valider.
+            Après avoir lancé le programme, interagit directement avec son interface pour faire ce que l'on te demande.
+            Une fois ta tâche terminée, ne fait rien de plus.
+            Rajoute une pause après avoir interagi avec l'interface graphique, surtout si tu viens d'ouvrir une application ou un menu.
+            Ajoute une pause après une action `press_key enter`.
+            Quand tu dois cliquer sur un élément, utilise les données de vision pour déterminer les coordonnées précises de l'élément et clique au centre de celui-ci.
+            
+            Les types d'actions possibles sont:
+                - 'move_mouse x y': Déplace le curseur.
+                - 'click_mouse button': Simule un clic de souris. button peut être "left" ou "right". Si tu vois un élément de l'interface qui semble cliquable, utilise `click_mouse` et cible le centre de cet élément.
+                - 'press_key key': Simule l'appui sur une touche du clavier. Utilise `press_key` pour les touches spéciales comme `enter`, `esc` ou `cmd`. Utilise 'cmd' pour la touche windows.
+                - 'type_text text': Simule la frappe de texte. Utilise `type_text` uniquement dans les champs de texte ou pour saisir du texte libre.
+                - 'wait seconds': Mets le programme en pause. Tu dois choisir la durée de la pause (en secondes) en fonction du contexte. 
+                - 'capture_screen': Prend une capture d'écran.
+            
+            Utilise 'capture_screen' quand :
+                - Tu as exécuté des actions et tu veux vérifier le résultat
+                - Tu ne comprends pas l'état de l'interface
+                - Tu soupçonnes un problème
 
-Les types d'actions possibles sont:
+            Si l'action précédente n'a pas fonctionné, explique brièvement pourquoi et prends une capture d'écran pour réévaluer la situation.
+            Retourne les actions une par ligne. Si tu ne peux pas determiner les actions à faire, ne retourne rien.
 
-'move_mouse x y': Déplace le curseur.
+            Par exemple, si tu dois cliquer sur un bouton qui contient le texte "Ouvrir", tu dois retourner l'action 'click_mouse left' et cibler le centre du bouton.
+            Si tu dois écrire ton nom dans un champ texte, tu dois utiliser l'action 'type_text <ton nom>'.
+            Si tu dois lancer un programme, ouvre le menu Démarrer en appuyant sur la touche windows, tape le nom du programme avec type_text puis valides avec la touche enter.
 
-'click_mouse button': Simule un clic de souris. button peut être "left" ou "right". Si tu vois un élément de l'interface qui semble cliquable, utilise click_mouse et cible le centre de cet élément.
-
-'press_key key': Simule l'appui sur une touche du clavier. Utilise press_key pour les touches spéciales comme enter, esc ou cmd. Utilise 'cmd' pour la touche windows.
-
-'type_text text': Simule la frappe de texte. Utilise type_text uniquement dans les champs de texte ou pour saisir du texte libre.
-
-'wait seconds': Mets le programme en pause. Tu dois choisir la durée de la pause (en secondes) en fonction du contexte.
-
-'capture_screen': Prend une capture d'écran.
-
-Utilise 'capture_screen' quand :
-
-Tu as exécuté des actions et tu veux vérifier le résultat
-
-Tu ne comprends pas l'état de l'interface
-
-Tu soupçonnes un problème
-
-Si l'action précédente n'a pas fonctionné, explique brièvement pourquoi et prends une capture d'écran pour réévaluer la situation.
-Retourne les actions une par ligne. Si tu ne peux pas determiner les actions à faire, ne retourne rien.
-
-Par exemple, si tu dois cliquer sur un bouton qui contient le texte "Ouvrir", tu dois retourner l'action 'click_mouse left' et cibler le centre du bouton.
-Si tu dois écrire ton nom dans un champ texte, tu dois utiliser l'action 'type_text <ton nom>'.
-Si tu dois lancer un programme, ouvre le menu Démarrer en appuyant sur la touche windows, tape le nom du programme avec type_text puis valides avec la touche enter.
-
-Explique ton raisonnement avant de prendre une capture d'écran.
+            Explique ton raisonnement avant de prendre une capture d'écran.
         """
         if retry_message:
             prompt += f"\n L'action précédente n'a pas fonctionné, voici l'erreur: {retry_message}. Essaye à nouveau."
@@ -178,11 +158,8 @@ Explique ton raisonnement avant de prendre une capture d'écran.
 
             response = self.model.generate_content(contents=contents)
             self._log_message(f"Gemini Response (raw):\n{response.text}")
-
             # On utilise strip pour retirer les \n en debut et fin de chaine
             actions_text = response.text.strip()
-
-
         except Exception as e:
             self._log_message(f"Erreur lors de l'analyse avec Gemini: {e}")
             return []
@@ -211,43 +188,38 @@ Explique ton raisonnement avant de prendre une capture d'écran.
                         self._log_message(f"Erreur de parsing pour move_mouse : nombre d'arguments incorrect.")
                 elif action_type == "click_mouse":
                     if len(parts) == 2:
-
                         # on itère sur vision data pour trouver l'element qui correspond
-
                         if vision_data and 'elements' in vision_data:
-
-                            # si la réponse contient des éléments, on itère sur chaque élément pour trouver le centre.
-
-                            found_element = False
-                            for element in vision_data["elements"]:
-                                if element and "text" in element and parts[1] in element["text"]:
-                                    center_x, center_y = self._calculate_center(element)
-                                    if center_x is not None and center_y is not None:
-                                        actions.append({"action": "mouse_move", "x": center_x, "y": center_y})
-                                        actions.append(
-                                            {"action": "mouse_click", "button": "left"})  # On clique toujours à gauche, on verra pour faire autrement après
-                                        found_element = True
-                                        break
-                            if not found_element:  # Si on n'a pas trouvé d'élément, on fait un simple click
-                                actions.append({"action": "mouse_click", "button": parts[1]})
+                          # si la réponse contient des éléments, on itère sur chaque élément pour trouver le centre.
+                           found_element = False
+                           for element in vision_data["elements"]:
+                             if element and "text" in element and parts[1] in element["text"] :
+                               center_x, center_y = self._calculate_center(element)
+                               if center_x is not None and center_y is not None:
+                                  actions.append({"action": "mouse_move", "x": center_x, "y": center_y})
+                                  actions.append({"action": "mouse_click", "button": "left"}) # On clique toujours à gauche, on verra pour faire autrement après
+                                  found_element = True
+                                  break
+                           if not found_element: # Si on n'a pas trouvé d'élément, on fait un simple click
+                                 actions.append({"action": "mouse_click", "button": parts[1]})
                         else:
-                            actions.append({"action": "mouse_click", "button": parts[1]})
+                              actions.append({"action": "mouse_click", "button": parts[1]})
                     else:
                         self._log_message(f"Erreur de parsing pour click_mouse : nombre d'arguments incorrect.")
                 elif action_type == "press_key":
-                    if len(parts) == 2:
-                        key_name = parts[1]
-                        if key_name == 'windows' or key_name == 'win' or key_name == 'cmd':
-                            key = Key.cmd
-                        else:
-                            try:
-                                key = getattr(Key, key_name) if hasattr(Key, key_name) else key_name
-                            except AttributeError:
-                                self._log_message(f"Erreur de parsing pour press_key, touche inconnue: {key_name}")
-                                continue  # On ignore les touches non reconnues
-                        actions.append({"action": "keyboard_press", "key": key})
-                    else:
-                        self._log_message(f"Erreur de parsing pour press_key : nombre d'arguments incorrect.")
+                  if len(parts) == 2:
+                      key_name = parts[1]
+                      if key_name == 'windows' or key_name == 'win' or key_name == 'cmd':
+                           key = Key.cmd
+                      else:
+                          try:
+                              key = getattr(Key, key_name) if hasattr(Key, key_name) else key_name
+                          except AttributeError:
+                            self._log_message(f"Erreur de parsing pour press_key, touche inconnue: {key_name}")
+                            continue # On ignore les touches non reconnues
+                      actions.append({"action": "keyboard_press", "key": key})
+                  else:
+                     self._log_message(f"Erreur de parsing pour press_key : nombre d'arguments incorrect.")
                 elif action_type == "type_text":
                     if len(parts) >= 2:
                         text = " ".join(parts[1:])
@@ -263,7 +235,7 @@ Explique ton raisonnement avant de prendre une capture d'écran.
                     else:
                         self._log_message(f"Erreur de parsing pour wait : nombre d'arguments incorrect.")
                 elif action_type == "capture_screen":
-                    actions.append({"action": "capture_screen"})
+                        actions.append({"action": "capture_screen"})
                 else:
                     self._log_message(f"Action inconnue ignorée : {action_type}")
 
@@ -274,9 +246,9 @@ Explique ton raisonnement avant de prendre une capture d'écran.
         retry_count = 0
         image_base64 = None
         error = None
-        success = False  # On ajoute cette variable
-        while retry_count <= self.max_retries and not success:  # On ajoute success ici
-            image_base64 = None  # On réinitialise la variable ici
+        success = False # On ajoute cette variable
+        while retry_count <= MAX_RETRIES and not success: # On ajoute success ici
+            image_base64 = None # On réinitialise la variable ici
             for i, command in enumerate(commands):
                 if self._stop_requested:
                     self._log_message("Execution interrompue.")
@@ -284,88 +256,99 @@ Explique ton raisonnement avant de prendre une capture d'écran.
 
                 self._log_message(f"Executing command: {command}")
                 try:
-                    if command["action"] == "mouse_move":
+                     if command["action"] == "mouse_move":
                         self.mouse.position = (command["x"], command["y"])
-                    elif command["action"] == "mouse_click":
+                     elif command["action"] == "mouse_click":
                         button = Button.left if command["button"] == "left" else Button.right
                         self.mouse.click(button)
-                    elif command["action"] == "keyboard_press":
+                     elif command["action"] == "keyboard_press":
                         self.keyboard.press(command['key'])
                         self.keyboard.release(command['key'])
-                    elif command["action"] == "keyboard_type":
+                     elif command["action"] == "keyboard_type":
                         text = command["text"]
-                        # Utilisation du presse-papier pour une saisie plus précise
-                        pyperclip.copy(text)
-                        self.keyboard.press(Key.ctrl_l)
-                        self.keyboard.press('v')
-                        self.keyboard.release('v')
-                        self.keyboard.release(Key.ctrl_l)
-                        time.sleep(0.05) # Délai pour être sûr que le texte est bien collé
-                        
-                    elif command["action"] == "wait":
+                        for char in text:
+                            self.keyboard.type(char)
+                            time.sleep(0.03)  # Délai de 30 ms entre chaque caractère
+                        # Option alternative : Utiliser le presse-papier
+                        # pyperclip.copy(text)
+                        # self.keyboard.press(Key.ctrl_l)
+                        # self.keyboard.press('v')
+                        # self.keyboard.release('v')
+                        # self.keyboard.release(Key.ctrl_l)
+                     elif command["action"] == "wait":
                         self._log_message(f"Attente de {command['seconds']} secondes")
-                        time.sleep(command["seconds"])  # On garde la pause que Gemini a retourné
-                    elif command["action"] == "capture_screen":
+                        time.sleep(command["seconds"]) # On garde la pause que Gemini a retourné
+                     elif command["action"] == "capture_screen":
                         image_base64 = self._capture_screen()
                         self._log_message("Capture d'écran prise.")
+
+                        if i == len(commands) - 1:
+                            vision_result = self._analyze_image_with_gemini_vision(image_base64)
+                            if not vision_result:
+                                retry_count += 1
+                                continue
+
+                            error = self._check_action_with_gemini(vision_result)
+                            if error:
+                                retry_count += 1
+                                self._log_message(f"L'action n'a pas fonctionnée. Tentative #{retry_count}. Erreur: {error}")
+                                break
+                            else:
+                                success = True # Si c'est la dernière action et qu'il n'y a pas d'erreur, on passe success à true
+                        else:
+                            vision_result = self._analyze_image_with_gemini_vision(image_base64)
+                            if not vision_result:
+                                retry_count += 1
+                                continue
+
+                            error = self._check_action_with_gemini(vision_result)
+                            if error:
+                                retry_count += 1
+                                self._log_message(f"L'action n'a pas fonctionnée. Tentative #{retry_count}. Erreur: {error}")
+                                break
                 except Exception as e:
-                    self._log_message(
-                        f"Une erreur innatendue est survenue lors de l'execution de la commande {command}. Erreur: {e}")
-                    retry_count += 1  # On augmente le nombre de tentatives
+                    self._log_message(f"Une erreur innatendue est survenue lors de l'execution de la commande {command}. Erreur: {e}")
+                    retry_count += 1 # On augmente le nombre de tentatives
                     image_base64 = self._capture_screen()  # On prend une nouvelle capture d'écran
-                    error = f"Une erreur inattendue est survenue. Erreur: {e}"  # on sauvegarde l'erreur
+                    error = f"Une erreur inattendue est survenue. Erreur: {e}" # on sauvegarde l'erreur
                     break  # On sort de la boucle for pour réanalyser
 
             else:
                 if not image_base64:
-                     success = True  # On passe success à True si toutes les actions ont été faite et qu'il n'y a pas de capture d'écran à la fin
-
+                    success = True # On passe success à True si toutes les actions ont été faite et qu'il n'y a pas de capture d'écran à la fin
+                
             if image_base64:
-                vision_result = self._analyze_image_with_gemini_vision(image_base64)
-                if not vision_result:
-                     retry_count += 1
-                     continue
-                error = self._check_action_with_gemini(vision_result)
-                if error:
-                    retry_count += 1
-                    self._log_message(
-                         f"L'action n'a pas fonctionnée. Tentative #{retry_count}. Erreur: {error}")
-                    commands = self._parse_instruction(self.current_instruction, image_base64, f"L'action précédente n'a pas fonctionné. Tentative #{retry_count}. Erreur: {error}")
-                    if not commands:
-                        self._log_message(f"Gemini n'a pas retourné de nouvelle action.")
-                        return
-                else:
-                    success = True
-
-            else :
-                return # Pas de capture d'écran
-
-        self._log_message(f"L'action n'a pas fonctionnée après {self.max_retries} tentatives.")
+                commands = self._parse_instruction(self.current_instruction, image_base64, f"L'action précédente n'a pas fonctionné. Tentative #{retry_count}. Erreur: {error}")
+                if not commands:
+                    self._log_message(f"Gemini n'a pas retourné de nouvelle action.")
+                    return
+            else:
+                return  # Pas de capture d'écran.
+        self._log_message(f"L'action n'a pas fonctionnée après {MAX_RETRIES} tentatives.")
 
 
     def _check_action_with_gemini(self, vision_data):
         """Utilise Gemini pour vérifier si l'action a fonctionné."""
         prompt = f"""
-Voici l'instruction qui a été exécutée: {self.current_instruction}
-Voici les informations sur l'interface graphique après execution:
-{vision_data}
+          Voici l'instruction qui a été exécutée: {self.current_instruction}
+          Voici les informations sur l'interface graphique après execution:
+          {vision_data}
 
-Dis moi si l'action a bien fonctionnée ou non. Si ce n'est pas le cas donne moi une raison de l'échec, sinon ne dis rien.
-Réponds par du texte uniquement, ne fait pas de code ou de json.
-"""
+          Dis moi si l'action a bien fonctionnée ou non. Si ce n'est pas le cas donne moi une raison de l'échec, sinon ne dis rien.
+          Réponds par du texte uniquement, ne fait pas de code ou de json.
+        """
         try:
             response = self.model.generate_content(prompt)
             if response.text:
-                self._log_message(f"Gemini a répondu à la vérification: {response.text}")
-
+                 self._log_message(f"Gemini a répondu à la vérification: {response.text}")
                 # On utilise strip pour retirer les \n en debut et fin de chaine
-                return response.text.strip()  # Renvoi la réponse si Gemini a détecté une erreur
+                 return response.text.strip()  # Renvoi la réponse si Gemini a détecté une erreur
             else:
                 return None
         except Exception as e:
             self._log_message(f"Erreur lors de la vérification de l'action avec Gemini: {e}")
             return None
-
+    
     def _add_to_history(self, instruction, image_base64):
         """Ajoute l'instruction et la capture à l'historique."""
         self._history.append({
@@ -396,14 +379,9 @@ Réponds par du texte uniquement, ne fait pas de code ou de json.
 
     def run(self, instruction):
         """Analyse l'instruction et l'image, puis exécute les commandes."""
-        if not instruction:
-            self._log_message("L'instruction ne peut pas être vide.")
-            return
-
         self._stop_requested = False  # Reset le flag avant d'executer
         self.set_stop_button_state(tk.NORMAL)  # Réactiver le bouton au début de l'analyse
-        self.current_instruction = instruction  # On sauvegarde l'instruction
-        self.vision_request_count = 0 #On réinitialise le compteur à chaque nouvelle instruction
+        self.current_instruction = instruction # On sauvegarde l'instruction
         thread = threading.Thread(target=self._run_in_thread, args=(instruction,))
         thread.start()
         self._history = []  # Réinitialise l'historique à chaque run
@@ -413,7 +391,7 @@ Réponds par du texte uniquement, ne fait pas de code ou de json.
         self.set_send_button_state(tk.DISABLED)  # Désactiver le bouton
         self.set_status("Gemini réfléchi...")
         image_base64 = self._capture_screen()
-        self._add_to_history(instruction, image_base64)  # Ajouter la capture à l'historique
+        self._add_to_history(instruction, image_base64) # Ajouter la capture à l'historique
         commands = self._parse_instruction(instruction, image_base64)
         if commands:
             self.execute_actions(commands)
@@ -438,17 +416,17 @@ Réponds par du texte uniquement, ne fait pas de code ou de json.
                 callback(None)
                 return
 
-        try:
-            self._log_message("Reconnaissance en cours...")
-            text = r.recognize_google(audio, language="fr-FR")
-            self._log_message(f"Vous avez dit : {text}")
-            callback(text)
-        except sr.UnknownValueError:
-            self._log_message("Impossible de comprendre l'audio")
-            callback(None)
-        except sr.RequestError as e:
-            self._log_message(f"Erreur lors de la requête de reconnaissance vocale: {e}")
-            callback(None)
+            try:
+                self._log_message("Reconnaissance en cours...")
+                text = r.recognize_google(audio, language="fr-FR")
+                self._log_message(f"Vous avez dit : {text}")
+                callback(text)
+            except sr.UnknownValueError:
+                self._log_message("Impossible de comprendre l'audio")
+                callback(None)
+            except sr.RequestError as e:
+                self._log_message(f"Erreur lors de la requête de reconnaissance vocale: {e}")
+                callback(None)
 
 
 def load_api_key():
@@ -476,7 +454,6 @@ def save_api_key(api_key):
 
 def main():
     """Fonction principale pour la création de l'interface graphique."""
-
     # Chargement de la clé API depuis le fichier
     api_key = load_api_key()
 
@@ -515,7 +492,7 @@ def main():
 
     # Création d'une zone de texte pour la sortie
     output_text = scrolledtext.ScrolledText(root, wrap=tk.WORD, bg="white", fg=TEXT_COLOR,
-                                            font=(FONT_FAMILY, FONT_SIZE))
+                                           font=(FONT_FAMILY, FONT_SIZE))
     output_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     # Label pour indiquer le statut
@@ -530,7 +507,6 @@ def main():
     input_entry = ttk.Entry(input_frame, font=(FONT_FAMILY, FONT_SIZE))
     input_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-
     def send_instruction():
         instruction = input_entry.get()
         if instruction:
@@ -542,7 +518,6 @@ def main():
             output_text.insert(tk.END, "Veuillez entrer une instruction\n")
             output_text.see(tk.END)
 
-
     def use_voice_command():
         def voice_callback(instruction):
             if instruction:
@@ -551,7 +526,6 @@ def main():
                 automator.run(instruction)
 
         automator._recognize_speech(voice_callback)
-
 
     # Bouton Envoyer
     send_button = ttk.Button(
@@ -581,6 +555,7 @@ def main():
     )
     stop_button.pack(side=tk.LEFT, padx=5)
 
+
     # Menu déroulant pour les modèles
     model_var = tk.StringVar(root)
     model_var.set(DEFAULT_MODEL)  # Valeur par défaut
@@ -588,13 +563,11 @@ def main():
                                  font=(FONT_FAMILY, FONT_SIZE))
     model_dropdown.pack(pady=(0, 5))
 
-
     def change_model(event):
         selected_model = model_var.get()
         automator.model = genai.GenerativeModel(selected_model)
         output_text.insert(tk.END, f"Modèle changé pour: {selected_model}\n")
         output_text.see(tk.END)
-
 
     model_dropdown.bind("<<ComboboxSelected>>", change_model)
 
@@ -616,21 +589,18 @@ def main():
     # Initialisation de l'automator avec le text widget, le label de status et le bouton envoyer et le bouton stop
     automator = TaskAutomator(api_key, output_text, status_label, send_button, stop_button)
 
-
     def change_api_key():
         new_key = simpledialog.askstring("Changer clé API", "Veuillez entrer votre nouvelle clé API Gemini :")
         if new_key:
             if save_api_key(new_key):
                 messagebox.showinfo("Changement clé API", "Votre clé API a bien été enregistrée.")
                 genai.configure(api_key=new_key)
-                automator.model = genai.GenerativeModel(
-                    "gemini-pro-vision")  # Recharger le model
+                automator.model = genai.GenerativeModel("gemini-pro-vision")  # Recharger le model
                 output_text.insert(tk.END, f"Nouvelle clé api chargée\n")
                 output_text.see(tk.END)
             else:
                 messagebox.showerror("Changement clé API",
                                      "Une erreur s'est produite lors de la sauvegarde de la nouvelle clé API.")
-
 
     api_key_button = ttk.Button(
         root,
