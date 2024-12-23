@@ -7,7 +7,7 @@ Gemini peut ouvrir et intéragir avec certains programmes mais faut pas trop lui
 Il est lent et Il peut se trompé dans les actions, procéder avec précaution !
 
 
-Le code est libre, faites-en ce que vous voulez mais créditez-moi en cas de fork
+Le code est libre, faites-en ce que vous voulez.
 
 ![image](https://github.com/user-attachments/assets/2a69f987-4936-4e50-bbb0-920c2c88695c)
 ![image](https://github.com/user-attachments/assets/9e4d7326-2fb9-4c7a-8fb2-0dfaa4e826b1)
