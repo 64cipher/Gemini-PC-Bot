@@ -7,10 +7,7 @@ import base64
 import os
 from PIL import Image
 import io
-import numpy as np
-import torch
 import json
-import argparse
 import speech_recognition as sr
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, simpledialog
