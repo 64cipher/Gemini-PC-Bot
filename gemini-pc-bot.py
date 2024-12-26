@@ -67,7 +67,7 @@ class TaskAutomator:
 
     def _analyze_image_with_gemini_vision(self, image_base64):
         """Analyse l'image avec l'API Gemini Vision."""
-
+        self._log_message("Analyse de l'image avec Gemini Vision...")
         try:
             contents = [
                 "Analyse l'image et détecte tous les éléments de l'interface graphique, et leurs textes",
@@ -78,13 +78,13 @@ class TaskAutomator:
             if response.text:
                 try:
                     data = json.loads(response.text)
-                    self._log_message(f"Gemini Vision Response (parsed):\n{json.dumps(data, indent=2)}")
+                    self._log_message(f"Gemini Vision Response (parsed), nb elements: {len(data.get('elements', []))}")
                     return data
                 except json.JSONDecodeError as e:
-                    self._log_message(f"Erreur lors du parsing JSON : {e}. La réponse brute est : {response.text}")
+                    self._log_message(f"Erreur lors du parsing JSON : {e}. La réponse brute de Gemini Vision n'a pas pu être parsée.")
                     return {}
             else:
-                self._log_message("L'API Gemini n'a retourné aucune réponse")
+                self._log_message("L'API Gemini n'a retourné aucune réponse lors de l'analyse de la vision.")
                 return {}
 
         except Exception as e:
@@ -102,9 +102,11 @@ class TaskAutomator:
                 return center_x, center_y
             return None, None
 
-    def _parse_instruction(self, instruction, image_base64, retry_message=None):
+    def _parse_instruction(self, instruction, image_base64, vision_data=None, retry_message=None):
         """Utilise Gemini pour analyser l'instruction, l'image et les données de vision et retourner des actions sous forme textuelle."""
-        vision_data = self._analyze_image_with_gemini_vision(image_base64)  # données de vision
+        #vision_data = self._analyze_image_with_gemini_vision(image_base64)  # données de vision
+        if not vision_data:
+             vision_data = self._analyze_image_with_gemini_vision(image_base64)
 
         prompt = f"""
             Tu es un assistant expert en automatisation d'interface graphique. Ton but est d'exécuter une instruction en interagissant avec l'interface.
@@ -154,15 +156,15 @@ class TaskAutomator:
             ]
 
             response = self.model.generate_content(contents=contents)
-            self._log_message(f"Gemini Response (raw):\n{response.text}")
+            self._log_message("Analyse de l'instruction par Gemini...")
             # On utilise strip pour retirer les \n en debut et fin de chaine
             actions_text = response.text.strip()
         except Exception as e:
-            self._log_message(f"Erreur lors de l'analyse avec Gemini: {e}")
+            self._log_message(f"Erreur lors de l'analyse de l'instruction avec Gemini: {e}")
             return []
 
         actions = self.parse_text_actions(actions_text, vision_data)
-        self._log_message(f"Gemini Response (parsed):\n{actions}")
+        self._log_message(f"Actions Parsées par Gemini: {actions}")
         return actions
 
     def parse_text_actions(self, actions_text, vision_data):
@@ -244,6 +246,7 @@ class TaskAutomator:
         image_base64 = None
         error = None
         success = False # On ajoute cette variable
+        vision_data_for_check = None # On initialise la variable ici
         while retry_count <= MAX_RETRIES and not success: # On ajoute success ici
             image_base64 = None # On réinitialise la variable ici
             for i, command in enumerate(commands):
@@ -278,14 +281,14 @@ class TaskAutomator:
                      elif command["action"] == "capture_screen":
                         image_base64 = self._capture_screen()
                         self._log_message("Capture d'écran prise.")
+                        vision_data_for_check = self._analyze_image_with_gemini_vision(image_base64)
 
                         if i == len(commands) - 1:
-                            vision_result = self._analyze_image_with_gemini_vision(image_base64)
-                            if not vision_result:
+                            if not vision_data_for_check:
                                 retry_count += 1
                                 continue
 
-                            error = self._check_action_with_gemini(vision_result)
+                            error = self._check_action_with_gemini(vision_data_for_check)
                             if error:
                                 retry_count += 1
                                 self._log_message(f"L'action n'a pas fonctionnée. Tentative #{retry_count}. Erreur: {error}")
@@ -293,13 +296,12 @@ class TaskAutomator:
                             else:
                                 success = True # Si c'est la dernière action et qu'il n'y a pas d'erreur, on passe success à true
                         else:
-                            vision_result = self._analyze_image_with_gemini_vision(image_base64)
-                            if not vision_result:
+                           if not vision_data_for_check:
                                 retry_count += 1
                                 continue
 
-                            error = self._check_action_with_gemini(vision_result)
-                            if error:
+                           error = self._check_action_with_gemini(vision_data_for_check)
+                           if error:
                                 retry_count += 1
                                 self._log_message(f"L'action n'a pas fonctionnée. Tentative #{retry_count}. Erreur: {error}")
                                 break
@@ -307,6 +309,7 @@ class TaskAutomator:
                     self._log_message(f"Une erreur innatendue est survenue lors de l'execution de la commande {command}. Erreur: {e}")
                     retry_count += 1 # On augmente le nombre de tentatives
                     image_base64 = self._capture_screen()  # On prend une nouvelle capture d'écran
+                    vision_data_for_check = self._analyze_image_with_gemini_vision(image_base64)
                     error = f"Une erreur inattendue est survenue. Erreur: {e}" # on sauvegarde l'erreur
                     break  # On sort de la boucle for pour réanalyser
 
@@ -315,7 +318,7 @@ class TaskAutomator:
                     success = True # On passe success à True si toutes les actions ont été faite et qu'il n'y a pas de capture d'écran à la fin
                 
             if image_base64:
-                commands = self._parse_instruction(self.current_instruction, image_base64, f"L'action précédente n'a pas fonctionné. Tentative #{retry_count}. Erreur: {error}")
+                commands = self._parse_instruction(self.current_instruction, image_base64, vision_data_for_check, f"L'action précédente n'a pas fonctionné. Tentative #{retry_count}. Erreur: {error}")
                 if not commands:
                     self._log_message(f"Gemini n'a pas retourné de nouvelle action.")
                     return
@@ -326,6 +329,7 @@ class TaskAutomator:
 
     def _check_action_with_gemini(self, vision_data):
         """Utilise Gemini pour vérifier si l'action a fonctionné."""
+        self._log_message("Vérification de l'action avec Gemini...")
         prompt = f"""
           Voici l'instruction qui a été exécutée: {self.current_instruction}
           Voici les informations sur l'interface graphique après execution:
@@ -341,6 +345,7 @@ class TaskAutomator:
                 # On utilise strip pour retirer les \n en debut et fin de chaine
                  return response.text.strip()  # Renvoi la réponse si Gemini a détecté une erreur
             else:
+                self._log_message("L'API Gemini n'a retourné aucune réponse lors de la vérification de l'action.")
                 return None
         except Exception as e:
             self._log_message(f"Erreur lors de la vérification de l'action avec Gemini: {e}")
