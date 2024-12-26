@@ -2,7 +2,6 @@ google-generativeai
 pynput
 mss
 Pillow
-numpy
 speechrecognition
 ttkthemes
 pyperclip
