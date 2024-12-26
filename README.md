@@ -5,6 +5,7 @@ PoC de controle clavier/souris par Gemini
 Gemini peut ouvrir et intéragir avec certains programmes mais faut pas trop lui en demander !
 
 Il est lent et Il peut se tromper dans les actions, procéder avec précaution !
+
 Met une dizaine de secondes à démarrer une requête le temps d'analyser la première capture d'écran.
 
 Le code est libre, faites-en ce que vous voulez.
