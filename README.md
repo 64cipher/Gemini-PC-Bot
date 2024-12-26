@@ -24,7 +24,7 @@ Le code est libre, faites-en ce que vous voulez.
 
 ```python gemini-pc-bot.py```
 
-Obtenez gratuitement votre clé API Gemini sur https://aistudio.google.com/apikey
+Obtenez gratuitement votre clé API Gemini sur: https://aistudio.google.com/apikey
 
 # Réglages
 
