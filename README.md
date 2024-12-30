@@ -20,7 +20,7 @@ Le code est libre, faites-en ce que vous voulez.
 
 ```cd Gemini-PC-Bot```
 
-```pip install -r requirements. txt```
+```pip install -r requirements.txt```
 
 ```python gemini-pc-bot.py```
 
