@@ -10,7 +10,8 @@ Met une dizaine de secondes à démarrer une requête le temps d'analyser la pre
 
 Le code est libre, faites-en ce que vous voulez.
 
-![image](https://github.com/user-attachments/assets/86bf97b2-8787-47d5-b5b9-82ada5c12cbe)
+![image](https://github.com/user-attachments/assets/aae65ccf-7399-4f1a-b7ab-d8fed76065db)
+
 
 
 # Installation et utilisation
